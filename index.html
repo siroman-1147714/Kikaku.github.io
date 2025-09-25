@@ -5,32 +5,39 @@
   <title>限定公開サイト</title>
 </head>
 <body>
+
   <h1>ようこそ！</h1>
   <p>ログインしたユーザーだけが見られるページです。</p>
-  <div id="content"></div>
+
+  <div id="content">
+    <p>読み込み中...</p>
+  </div>
+
+  <hr>
+
   <input type="text" id="textInput" placeholder="メッセージを入力">
   <button id="sendButton">送信</button>
 
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyD8z2Pf6MiNxAMkyMgm5xPikF3oGA052L8",
-  authDomain: "pythonkikaku.firebaseapp.com",
-  projectId: "pythonkikaku",
-  storageBucket: "pythonkikaku.firebasestorage.app",
-  messagingSenderId: "42282715289",
-  appId: "1:42282715289:web:b1bd5c7b9f493915e11008",
-  measurementId: "G-FNFBTZMPV1"
-};
+  <script>
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyD8z2Pf6MiNxAMkyMgm5xPikF3oGA052L8",
+      authDomain: "pythonkikaku.firebaseapp.com",
+      projectId: "pythonkikaku",
+      storageBucket: "pythonkikaku.appspot.com",
+      messagingSenderId: "42282715289",
+      appId: "1:42282715289:web:b1bd5c7b9f493915e11008",
+      measurementId: "G-FNFBTZMPV1"
+    };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-</body>
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+  </script>
+  <script src="app.js"></script>
+
+  </body>
 </html>
