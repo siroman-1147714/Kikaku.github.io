@@ -93,15 +93,33 @@
         button:active {
             transform: translateY(0);
         }
+        
+        /* ログイン画面のボタンレイアウトを調整 */
+        #team-select-wrapper {
+            display: flex;
+            flex-wrap: wrap; /* 画面が狭くても折り返す */
+            justify-content: center; /* 中央揃え */
+            gap: 15px; /* ボタン間の隙間 */
+            margin: 25px 0; /* 上下のマージン */
+        }
 
         /* 7. 特定のボタンの調整 */
         
         /* チーム選択ボタン */
-        button.team-select { background-color: #5c6bc0; }
+        button.team-select { 
+            font-size: 1.2em; /* 文字を大きく */
+            font-weight: bold;
+            padding: 20px 30px; /* パディングを大きく */
+            min-width: 200px; /* 最小幅を指定 */
+            flex-grow: 1; /* できるだけ幅を広げる */
+            flex-basis: 40%; /* 2列レイアウトを基本にする */
+        }
         button.team-select[data-team="Red"] { background-color: #e53935; }
         button.team-select[data-team="Green"] { background-color: #43a047; }
         button.team-select[data-team="Blue"] { background-color: #1e88e5; }
-        button.team-select[data-team="Yellow"] { background-color: #fdd835; color: #333;}
+        
+        button.team-select[data-team="Yellow"] { background-color: #fbc02d; color: #333;}
+        
         button.team-select:hover { opacity: 0.85; }
 
         /* ログアウト・戻るボタン (目立たない色に) */
@@ -146,12 +164,8 @@
             box-shadow: 0 0 0 2px rgba(57, 73, 171, 0.2);
             outline: none;
         }
-        #betting-form {
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            padding: 15px;
-            background: #fafafa;
-        }
+        
+        /* betting-form は JavaScript でロック/解除を制御 */
 
         /* 9. リストとカート */
         #cart, #team-bet-list, #host-bet-list, #race-menu-bet-list, #betting-view-bet-list {
@@ -202,6 +216,29 @@
         .race-status { font-weight: bold; margin-left: 10px; }
         .status-open { color: #43a047; }
         .status-closed { color: #e53935; }
+        
+        #betting-status-message-wrapper {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        #betting-status-message-wrapper p {
+            margin: 0;
+            font-size: 1.1em;
+            text-align: center;
+        }
+        #betting-status-message-wrapper.locked {
+            background-color: #ffebee; /* 薄い赤 */
+        }
+        #betting-status-message-wrapper.unlocked {
+            background-color: #e8f5e9; /* 薄い緑 */
+        }
+        
+        /* フォーム無効化時のスタイル */
+        #betting-form.locked, #cart-wrapper.locked {
+            opacity: 0.6;
+            pointer-events: none; /* クリック自体を無効化 */
+        }
 
         /* 11. 結果テーブル */
         .results-table {
@@ -287,10 +324,14 @@
     <div id="login-screen">
         <h1>仮想競馬サイトへようこそ</h1>
         <h2>チームまたは役割を選択してください</h2>
-        <button class="team-select" data-team="Red">Team Red</button>
-        <button class="team-select" data-team="Green">Team Green</button>
-        <button class="team-select" data-team="Blue">Team Blue</button>
-        <button class="team-select" data-team="Yellow">Team Yellow</button>
+
+        <div id="team-select-wrapper">
+            <button class="team-select" data-team="Red">Team Red</button>
+            <button class="team-select" data-team="Green">Team Green</button>
+            <button class="team-select" data-team="Blue">Team Blue</button>
+            <button class="team-select" data-team="Yellow">Team Yellow</button>
+        </div>
+
         <hr>
         <button id="host-login">管理者(Host)用</button>
     </div>
@@ -307,6 +348,7 @@
             <button class="race-select-btn" data-race="レース0">レース0</button>
             <span id="race-status-0" class="race-status status-closed">（受付終了）</span>
         </div>
+        
         <div id="race-1-wrapper" class="hidden">
             <button class="race-select-btn" data-race="レース1">レース1</button>
             <span id="race-status-1" class="race-status status-closed">（受付終了）</span>
@@ -328,7 +370,8 @@
         <button id="back-to-team-menu">レース一覧に戻る</button>
         <hr>
         <h3>メニュー</h3>
-        <button id="download-info-btn">レース情報 (CSV)</button>
+        <button id="download-pdf-btn">レース情報 (PDF)</button>
+        <button id="download-csv-btn">出走馬情報 (CSV)</button>
         <button id="goto-betting-btn">馬券購入</button>
         <button id="show-payouts-btn">配当</button>
         <button id="show-bet-results-btn">払い戻し一覧</button>
@@ -341,42 +384,49 @@
     <div id="betting-view" class="hidden">
         <h2 class="points-display-header">現在のポイント: <span class="team-points-display">...</span> pt</h2>
         <h1 id="betting-header"></h1>
+        
+        <div id="betting-status-message-wrapper">
+            <p id="betting-status-message" class="race-status status-open">（現在、馬券の購入・取り消しが可能です）</p>
+        </div>
+        
         <button id="back-to-race-menu">レースメニューに戻る</button>
         <hr>
         
         <div style="display: flex; gap: 20px;">
             <div style="flex: 1;">
                 <h3>馬券をカートに追加</h3>
-                <div id="betting-form" style="border: 1px solid #ccc; padding: 10px;">
-                    <div>
-                        <label>馬券の種類:</label>
-                        <select id="bet-type-select">
-                            <option value="Tansho">単勝 (1頭)</option>
-                            <option value="Nirentan">二連単 (2頭)</option>
-                            <option value="Nirenfuku">二連複 (2頭)</option>
-                            <option value="Sanrenpuku">三連複 (3頭)</option>
-                            <option value="Sanrentan">三連単 (3頭)</option>
-                        </select>
+                <div style="border: 1px solid #ddd; border-radius: 5px; padding: 15px; background: #fafafa;">
+                    <div id="betting-form"> 
+                        <div>
+                            <label>馬券の種類:</label>
+                            <select id="bet-type-select">
+                                <option value="Tansho">単勝 (1頭)</option>
+                                <option value="Nirentan">二連単 (2頭)</option>
+                                <option value="Nirenfuku">二連複 (2頭)</option>
+                                <option value="Sanrenpuku">三連複 (3頭)</option>
+                                <option value="Sanrentan">三連単 (3頭)</option>
+                            </select>
+                        </div>
+                        <div id="horse-inputs">
+                            <label class="horse-label" id="horse-label-1">馬1:</label>
+                            <input type="number" class="horse-input" id="horse-input-1" min="1" max="16">
+                            <label class="horse-label hidden" id="horse-label-2">馬2:</label>
+                            <input type="number" class="horse-input hidden" id="horse-input-2" min="1" max="16">
+                            <label class="horse-label hidden" id="horse-label-3">馬3:</label>
+                            <input type="number" class="horse-input hidden" id="horse-input-3" min="1" max="16">
+                        </div>
+                        <div>
+                            <label>購入ポイント:</label>
+                            <input type="number" id="bet-amount-input" min="10">
+                            <span>pt</span>
+                        </div>
+                        <button id="add-to-cart-button">カートに追加</button>
+                        <p id="bet-error-message" style="color: red;"></p>
                     </div>
-                    <div id="horse-inputs">
-                        <label class="horse-label" id="horse-label-1">馬1:</label>
-                        <input type="number" class="horse-input" id="horse-input-1" min="1" max="16">
-                        <label class="horse-label hidden" id="horse-label-2">馬2:</label>
-                        <input type="number" class="horse-input hidden" id="horse-input-2" min="1" max="16">
-                        <label class="horse-label hidden" id="horse-label-3">馬3:</label>
-                        <input type="number" class="horse-input hidden" id="horse-input-3" min="1" max="16">
-                    </div>
-                    <div>
-                        <label>購入ポイント:</label>
-                        <input type="number" id="bet-amount-input" min="10">
-                        <span>pt</span>
-                    </div>
-                    <button id="add-to-cart-button">カートに追加</button>
-                    <p id="bet-error-message" style="color: red;"></p>
                 </div>
             </div>
             
-            <div style="flex: 1;">
+            <div style="flex: 1;" id="cart-wrapper">
                 <h3>購入カート (このレース)</h3>
                 <div id="cart"></div>
                 <p>合計: <strong id="cart-total">0</strong> pt</p>
@@ -460,6 +510,7 @@
                         <button class="status-btn" data-race="race0" data-status="closed">受付終了</button>
                     </td>
                 </tr>
+                
                 <tr>
                     <td><strong>レース1</strong></td>
                     <td>
@@ -571,15 +622,14 @@
         const teamLogoutButton = document.getElementById("team-logout");
         const raceSelectButtons = document.querySelectorAll(".race-select-btn"); 
         
-        // ★★★ レース0 を追加 ★★★
         const raceStatusSpans = { 
-            0: document.getElementById("race-status-0"), // ★ 追加
+            0: document.getElementById("race-status-0"), 
             1: document.getElementById("race-status-1"), 
             2: document.getElementById("race-status-2"), 
             3: document.getElementById("race-status-3") 
         };
         const raceWrappers = { 
-            0: document.getElementById("race-0-wrapper"), // ★ 追加
+            0: document.getElementById("race-0-wrapper"), 
             1: document.getElementById("race-1-wrapper"), 
             2: document.getElementById("race-2-wrapper"), 
             3: document.getElementById("race-3-wrapper") 
@@ -588,7 +638,11 @@
         // レースメニュー画面
         const raceMenuHeader = document.getElementById("race-menu-header");
         const backToTeamMenuButton = document.getElementById("back-to-team-menu");
-        const downloadInfoButton = document.getElementById("download-info-btn");
+        
+        // ★★★ 2つのボタンを取得するように変更 ★★★
+        const downloadPdfButton = document.getElementById("download-pdf-btn");
+        const downloadCsvButton = document.getElementById("download-csv-btn");
+        
         const gotoBettingButton = document.getElementById("goto-betting-btn");
         const showPayoutsButton = document.getElementById("show-payouts-btn"); 
         const showBetResultsButton = document.getElementById("show-bet-results-btn"); 
@@ -613,6 +667,11 @@
         };
         const bettingViewBetListDiv = document.getElementById("betting-view-bet-list"); 
         const bettingViewBetCount = document.getElementById("betting-view-bet-count"); 
+
+        const bettingStatusMessageWrapper = document.getElementById("betting-status-message-wrapper");
+        const bettingStatusMessage = document.getElementById("betting-status-message");
+        const bettingForm = document.getElementById("betting-form"); // フォーム要素の親
+        const cartWrapper = document.getElementById("cart-wrapper"); // カートラッパー
 
         // 結果表示画面
         const payoutHeader = document.getElementById("payout-header");
@@ -720,12 +779,16 @@
                 case "raceMenu":
                     raceMenuView.classList.remove("hidden"); 
                     raceMenuHeader.textContent = `${currentRace} メニュー`;
+                    
+                    // (ボタンが2つになったため、テキスト変更処理は不要)
+
                     startRaceStatusListener(); 
                     startBetListListener(); 
                     break;
                 case "betting":
                     bettingView.classList.remove("hidden");
                     bettingHeader.textContent = `${currentRace} の馬券購入`;
+                    startRaceStatusListener(); // フォームロックのために StatusListener を開始
                     startBetListListener(); 
                     break;
                 case "payouts": 
@@ -809,6 +872,9 @@
                         });
                         
                         addCancelButtonListeners();
+                        
+                        // 追加: 馬券リストが更新されたので、ロック状態を再適用
+                        updateBettingViewLockState();
 
                     }, (error) => { 
                         if (error.code === 'failed-precondition') {
@@ -827,7 +893,13 @@
             const teamColor = bet.team.toLowerCase(); 
             const p = document.createElement("p");
             p.className = "bet-history-item"; 
-            p.style.color = teamColor; 
+            
+            // 修正: Yellowの文字色を暗くする
+            if (teamColor === "yellow") {
+                p.style.color = "#b7950b"; // 暗い黄色（マスタード）
+            } else {
+                p.style.color = teamColor;
+            }
             
             let html = `[${bet.race}] <strong>${betDetails}</strong> に <strong>${bet.amount} pt</strong> (状態: ${bet.paid ? '払戻済' : '未払戻'})`;
             
@@ -845,8 +917,7 @@
                 .onSnapshot((doc) => {
                     globalRaceStatus = doc.exists ? doc.data() : {}; 
                     
-                    // ★★★ レース0 を追加 ★★★
-                    updateRaceVisibilityAndStatus("race0", raceWrappers[0], raceStatusSpans[0]); // ★ 追加
+                    updateRaceVisibilityAndStatus("race0", raceWrappers[0], raceStatusSpans[0]); 
                     updateRaceVisibilityAndStatus("race1", raceWrappers[1], raceStatusSpans[1]);
                     updateRaceVisibilityAndStatus("race2", raceWrappers[2], raceStatusSpans[2]);
                     updateRaceVisibilityAndStatus("race3", raceWrappers[3], raceStatusSpans[3]);
@@ -857,6 +928,10 @@
                     } else {
                         finalResultsButtonWrapper.classList.add("hidden");
                     }
+                    
+                    // 追加: 馬券購入画面のロック状態を更新
+                    updateBettingViewLockState();
+
                 });
         }
         
@@ -876,9 +951,60 @@
                 span.className = "race-status status-closed";
             }
         }
+        
+        // (馬券購入画面専用) フォームの有効/無効をリアルタイムで切り替える
+        function updateBettingViewLockState() {
+            // betting-view 以外の画面にいるか、レースが選択されていなければ何もしない
+            if (currentView !== "betting" || !currentRace) {
+                return; 
+            }
+
+            const raceId = getRaceIdFromName(currentRace);
+            const raceData = globalRaceStatus[raceId] || { status: "closed" };
+
+            if (raceData.status === "open") {
+                // --- 受付中 ---
+                bettingStatusMessageWrapper.classList.add("unlocked");
+                bettingStatusMessageWrapper.classList.remove("locked");
+                bettingStatusMessage.textContent = "（現在、馬券の購入・取り消しが可能です）";
+                bettingStatusMessage.className = "race-status status-open";
+
+                // フォームのロックを解除
+                bettingForm.classList.remove("locked");
+                cartWrapper.classList.remove("locked");
+                
+                // 履歴の「取り消し」ボタンを（もしあれば）再表示
+                document.querySelectorAll("#betting-view-bet-list .cancel-bet-button").forEach(btn => {
+                    btn.classList.remove("hidden");
+                });
+
+            } else {
+                // --- 受付終了 ---
+                bettingStatusMessageWrapper.classList.add("locked");
+                bettingStatusMessageWrapper.classList.remove("unlocked");
+                bettingStatusMessage.textContent = "（このレースの馬券受付は終了しました）";
+                bettingStatusMessage.className = "race-status status-closed";
+
+                // フォームをロック
+                bettingForm.classList.add("locked");
+                cartWrapper.classList.add("locked");
+
+                // 履歴の「取り消し」ボタンを強制的に隠す
+                document.querySelectorAll("#betting-view-bet-list .cancel-bet-button").forEach(btn => {
+                    btn.classList.add("hidden");
+                });
+                
+                // カートを空にする（受付終了時にカートに残っていても買えないため）
+                if (cart.length > 0) {
+                    cart = [];
+                    updateCartView();
+                    purchaseErrorMessage.textContent = "受付が終了したため、カートがリセットされました。";
+                }
+            }
+        }
 
         // -------------------------------------
-        // ★ New: 結果描画関数
+        // 結果描画関数
         // -------------------------------------
         
         // 「配当」ビューを描画する (ステップ22)
@@ -1000,9 +1126,14 @@
                         
                     teams.forEach((team, index) => {
                         const rank = index + 1;
+                        
+                        // ★ 修正: Yellowの文字色を暗くする
+                        const teamColor = team.id.toLowerCase();
+                        const colorStyle = (teamColor === "yellow") ? "#b7950b" : teamColor; // 暗い黄色
+                        
                         html += `<tr class="rank-${rank}">
                             <td><strong>${rank} 位</strong></td>
-                            <td style="color: ${team.id.toLowerCase()};">${team.id}</td>
+                            <td style="color: ${colorStyle};">${team.id}</td> 
                             <td><strong>${team.points} pt</strong></td>
                         </tr>`;
                     });
@@ -1075,26 +1206,44 @@
             updateView(); 
         });
         
-        downloadInfoButton.addEventListener("click", () => {
-            // (ダミーCSVダウンロード機能)
-            const dummyCSV = "馬番,馬名,騎手\n1,ウマタロウ,騎手A\n2,ウマジロウ,騎手B\n3,ウマサブロウ,騎手C\n(他13頭...)";
-            const blob = new Blob([dummyCSV], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            if (link.download !== undefined) { 
-                const url = URL.createObjectURL(blob);
-                link.setAttribute("href", url);
-                link.setAttribute("download", `${currentRace}_情報.csv`);
+        // ★★★ PDF閲覧ボタン（全レース対応） ★★★
+        downloadPdfButton.addEventListener("click", () => {
+            try {
+                // currentRace (例: "レース1") からファイル名を生成 (例: "レース1.pdf")
+                const pdfFileName = `${currentRace}.pdf`; 
+                window.open(encodeURI(pdfFileName), '_blank');
+            } catch (e) {
+                alert("PDFを開けませんでした。ファイルが見つからないか、ポップアップがブロックされています。");
+            }
+        });
+
+        // ★★★ CSVダウンロードボタン（実ファイルを参照） ★★★
+        downloadCsvButton.addEventListener("click", () => {
+            try {
+                // 1. ファイル名を生成 (例: "レース1.csv")
+                const csvFileName = `${currentRace}.csv`;
+
+                // 2. ダミーの <a> タグを作成
+                const link = document.createElement("a");
+                
+                // 3. <a> タグにファイルパスとdownload属性を設定
+                link.setAttribute("href", encodeURI(csvFileName));
+                link.setAttribute("download", csvFileName); 
+
+                // 4. 画面外でクリックしてダウンロードを実行
                 link.style.visibility = 'hidden';
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
+
+            } catch (e) {
+                alert("CSVのダウンロードに失敗しました。ファイルが見つからない可能性があります。");
             }
-            alert("レース情報をダウンロードします。");
         });
+        // ★★★ 修正ここまで ★★★
 
         gotoBettingButton.addEventListener("click", () => {
-            // ★★★ レースID変換ロジックを修正 ★★★
-            const raceId = getRaceIdFromName(currentRace); // ★ 変更
+            const raceId = getRaceIdFromName(currentRace); 
             if (globalRaceStatus[raceId] && globalRaceStatus[raceId].status === "open") {
                 currentView = "betting"; 
                 updateView(); 
@@ -1360,9 +1509,9 @@
             }
             const totalCost = parseInt(cartTotalSpan.textContent, 10);
             
-            // ★★★ レースID変換ロジックを修正 ★★★
-            const raceId = getRaceIdFromName(currentRace); // ★ 変更
+            const raceId = getRaceIdFromName(currentRace); 
             
+            // (フェイルセーフ) UIロックとは別に、ここでもチェック
             if (!globalRaceStatus[raceId] || globalRaceStatus[raceId].status !== "open") {
                 purchaseErrorMessage.textContent = `${currentRace} の馬券受付は終了しました。`;
                 return;
@@ -1407,9 +1556,9 @@
                     const amount = parseInt(e.target.dataset.amount, 10);
                     
                     // 1. レースが受付中か確認
-                    // ★★★ レースID変換ロジックを修正 ★★★
-                    const raceId = getRaceIdFromName(currentRace); // ★ 変更
+                    const raceId = getRaceIdFromName(currentRace); 
                     
+                    // (フェイルセーフ) UIロックとは別に、ここでもチェック
                     if (!globalRaceStatus[raceId] || globalRaceStatus[raceId].status !== "open") {
                         alert("受付時間外のため、馬券は取り消しできません。");
                         return;
@@ -1541,7 +1690,6 @@
             } catch (e) { return false; }
         }
 
-        // ★★★ ヘルパー関数を新規追加 ★★★
         // レース名（日本語）からID（英数）に変換するヘルパー関数
         function getRaceIdFromName(raceName) {
             if (raceName === "レース0") return "race0";
